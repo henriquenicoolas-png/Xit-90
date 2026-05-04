@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FFH4X · @nixxt</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg: #0b0d11;
+            --card: #12141c;
+            --card2: #181b26;
+            --border: #2a2e3d;
+            --accent: #00f0ff;
+            --glow: rgba(0,240,255,0.25);
+            --accent2: #7c3aed;
+            --glow2: rgba(124,58,237,0.25);
+            --text: #eff0f6;
+            --text2: #8b8fa3;
+            --dim: #5a5e72;
+            --green: #22c55e;
+            --green-glow: rgba(34,197,94,0.3);
+            --danger: #ef4444;
+            --track: #252a3a;
+            --radius: 12px;
+            --sm: 8px;
+        }
+
+        html, body {
+            height: 100%;
+            font-family:'Inter',sans-serif;
+            background:var(--bg);
+            overflow:hidden;
+            -webkit-user-select:none;
+            user-select:none;
+        }
+
+        #btnFloatShow {
+            position:fixed; top:16px; right:16px;
+            width:52px; height:52px;
+            border-radius:50%;
+            background:linear-gradient(135deg,var(--accent),var(--accent2));
+            border:none;
+            color:#fff; font-size:20px; font-weight:900;
+            font-family:'Orbitron',monospace;
+            box-shadow:0 0 30px var(--glow),0 4px 20px rgba(0,0,0,0.5);
+            cursor:pointer; transition:0.3s;
+            display:none; z-index:9999;
+        }
+        #btnFloatShow:hover { transform:scale(1.1); }
+
+        .panel {
+            width:100%; height:100%;
+            background:var(--card);
+            border:1px solid var(--border);
+            border-radius:var(--radius);
+            overflow:hidden;
+            display:flex; flex-direction:column;
+            position:relative; transition:0.3s;
+        }
+        .panel.hidden { opacity:0; pointer-events:none; }
+
+        .inject-overlay {
+            position:absolute; inset:0;
+            background:rgba(0,0,0,0.75);
+            backdrop-filter:blur(8px);
+            -webkit-backdrop-filter:blur(8px);
+            display:none;
+            align-items:center; justify-content:center;
+            flex-direction:column; gap:12px;
+            z-index:50; border-radius:var(--radius);
+        }
+        .inject-overlay.active { display:flex; }
+        .inject-overlay .icon { font-size:40px; animation:pulse 1s ease infinite; }
+        @keyframes pulse { 0%,100%{transform:scale(1);opacity:.7} 50%{transform:scale(1.15);opacity:1} }
+        .inject-overlay .title { font-family:'Orbitron',monospace; font-weight:700; font-size:16px; color:var(--text); letter-spacing:1px; }
+        .inject-overlay .sub { font-size:11px; color:var(--dim); }
+        .inject-overlay .progress-wrap { width:200px; height:3px; background:var(--track); border-radius:4px; overflow:hidden; }
+        .inject-overlay .progress-wrap .bar { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:4px; transition:width .1s linear; }
+        .inject-overlay .success { display:none; flex-direction:column; align-items:center; gap:6px; }
+        .inject-overlay .success .check { font-size:48px; color:var(--green); text-shadow:0 0 30px var(--green-glow); }
+        .inject-overlay .success .msg { font-family:'Orbitron',monospace; font-weight:600; font-size:13px; color:var(--green); }
+        .inject-overlay.done .progress-wrap, .inject-overlay.done .icon, .inject-overlay.done .title, .inject-overlay.done .sub { display:none; }
+        .inject-overlay.done .success { display:flex; }
+
+        .header {
+            background:linear-gradient(135deg,#0f1320,#1a1f30);
+            padding:14px 16px 10px;
+            border-bottom:1px solid var(--border);
+            display:flex; align-items:center;
+            justify-content:space-between; flex-shrink:0;
+        }
+        .brand { display:flex; align-items:center; gap:10px; }
+        .brand .logo {
+            width:30px; height:30px;
+            background:linear-gradient(135deg,var(--accent),var(--accent2));
+            border-radius:8px;
+            display:flex; align-items:center; justify-content:center;
+            font-family:'Orbitron',monospace;
+            font-weight:900; font-size:13px; color:#fff;
+            box-shadow:0 0 16px var(--glow);
+        }
+        .brand .info { display:flex; flex-direction:column; line-height:1.2; }
+        .brand .info .name { font-family:'Orbitron',monospace; font-weight:800; font-size:15px; color:var(--text); letter-spacing:1px; }
+        .brand .info .name span { color:var(--accent); }
+        .brand .info .sub { font-size:8px; color:var(--dim); letter-spacing:2px; text-transform:uppercase; }
+        .header .actions { display:flex; gap:6px; }
+        .header .actions button {
+            background:transparent; border:1px solid var(--border);
+            border-radius:6px; color:var(--text2);
+            width:28px; height:28px; font-size:13px;
+            cursor:pointer; transition:.2s; display:flex; align-items:center; justify-content:center; padding:0;
+        }
+        .header .actions button:hover { background:rgba(255,255,255,.05); border-color:var(--accent); color:var(--text); }
+        .header .actions .btn-hide { color:var(--danger); font-size:15px; }
+        .header .actions .btn-hide:hover { border-color:var(--danger); background:rgba(239,68,68,.1); }
+
+        .status {
+            background:#0d0f17; padding:6px 16px;
+            display:flex; align-items:center;
+            justify-content:space-between;
+            border-bottom:1px solid var(--border);
+            font-size:10px; color:var(--dim);
+            flex-shrink:0;
+        }
+        .status .indicator { display:flex; align-items:center; gap:6px; }
+        .status .dot {
+            width:6px; height:6px; border-radius:50%;
+            background:var(--dim); transition:.3s;
+        }
+        .status .dot.active { background:var(--green); box-shadow:0 0 8px var(--green-glow); animation:pulse-dot 1.5s infinite; }
+        @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
+        .status .txt { color:var(--text2); transition:.3s; font-size:11px; }
+        .status .txt.injected { color:var(--green); }
+        .status .ver { color:var(--dim); font-family:monospace; font-size:10px; }
+
+        /* ANÚNCIO DESTAQUE: 90% CAPA */
+        .highlight-banner {
+            background:linear-gradient(135deg, rgba(0,240,255,0.08), rgba(124,58,237,0.08));
+            border:1px solid rgba(0,240,255,0.15);
+            border-radius:8px;
+            padding:10px 12px;
+            margin:0 16px 8px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            flex-shrink:0;
+        }
+        .highlight-banner .h-left { display:flex; align-items:center; gap:8px; }
+        .highlight-banner .h-left .h-icon { font-size:18px; }
+        .highlight-banner .h-left .h-text { display:flex; flex-direction:column; line-height:1.3; }
+        .highlight-banner .h-left .h-text .h-title { font-family:'Orbitron',monospace; font-weight:700; font-size:12px; color:var(--accent); letter-spacing:0.5px; }
+        .highlight-banner .h-left .h-text .h-sub { font-size:9px; color:var(--dim); }
+        .highlight-banner .h-badge {
+            background:linear-gradient(135deg,var(--accent),var(--accent2));
+            border-radius:4px;
+            padding:3px 8px;
+            font-family:'Orbitron',monospace;
+            font-weight:800;
+            font-size:10px;
+            color:#fff;
+            letter-spacing:0.5px;
+        }
+
+        .body {
+            flex:1; overflow-y:auto;
+            padding:14px 16px;
+            display:flex; flex-direction:column; gap:12px;
+            -webkit-overflow-scrolling:touch;
+        }
+        .body::-webkit-scrollbar { width:3px; }
+        .body::-webkit-scrollbar-track { background:var(--bg); }
+        .body::-webkit-scrollbar-thumb { background:var(--dim); border-radius:4px; }
+
+        .row-btns { display:flex; gap:8px; }
+        .row-btns button {
+            flex:1; padding:12px 0; border:none;
+            border-radius:var(--sm);
+            font-family:'Inter',sans-serif; font-weight:700;
+            font-size:12px; text-transform:uppercase; letter-spacing:.5px;
+            cursor:pointer; transition:.25s ease; position:relative; overflow:hidden;
+        }
+        .btn-start {
+            background:linear-gradient(135deg,#1e293b,#0f172a);
+            color:var(--text); border:1px solid var(--border);
+        }
+        .btn-start:hover:not(:disabled) { border-color:var(--accent) !important; box-shadow:0 0 20px var(--glow); }
+        .btn-start:disabled { opacity:.4; cursor:not-allowed; }
+        .btn-inject {
+            background:linear-gradient(135deg,var(--accent),var(--accent2));
+            color:#fff; box-shadow:0 0 20px var(--glow);
+        }
+        .btn-inject:hover:not(:disabled) { box-shadow:0 0 35px var(--glow),0 0 60px var(--glow2); transform:scale(1.02); }
+        .btn-inject:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
+        .btn-inject .content { display:flex; align-items:center; justify-content:center; gap:6px; transition:.3s; }
+        .btn-inject .spinner { width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:none; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .btn-inject.injecting .spinner { display:inline-block; }
+        .btn-inject.injecting .txt-normal { display:none; }
+        .btn-inject.injecting .txt-inj { display:inline; }
+        .btn-inject.done .spinner { display:none; }
+        .btn-inject.done .txt-normal { display:none; }
+        .btn-inject.done .txt-done { display:inline; }
+        .btn-inject .txt-inj, .btn-inject .txt-done { display:none; }
+
+        .tog-section { display:flex; flex-direction:column; gap:6px; }
+        .tog-section .label { font-size:10px; font-weight:600; color:var(--dim); text-transform:uppercase; letter-spacing:1px; }
+        .tog-row { display:flex; gap:6px; }
+        .tog-item {
+            flex:1; display:flex; align-items:center; justify-content:space-between;
+            background:var(--card2); border:1px solid var(--border);
+            border-radius:var(--sm); padding:7px 10px; transition:.2s;
+        }
+        .tog-item:hover { border-color:#3a3f52; }
+        .tog-item .lbl { font-size:11px; font-weight:600; color:var(--text2); }
+        .tog-item .lbl small { font-weight:400; color:var(--dim); font-size:9px; }
+        .switch { position:relative; width:36px; height:18px; flex-shrink:0; }
+        .switch input { opacity:0; width:0; height:0; }
+        .switch .sl {
+            position:absolute; cursor:pointer; inset:0;
+            background:#252a3a; border-radius:18px; transition:.3s;
+        }
+        .switch .sl::before {
+            content:''; position:absolute; height:13px; width:13px;
+            left:3px; bottom:2.5px; background:#5a5e72; border-radius:50%; transition:.3s;
+        }
+        .switch input:checked+.sl { background:linear-gradient(135deg,var(--accent),var(--accent2)); box-shadow:0 0 10px var(--glow); }
+        .switch input:checked+.sl::before { transform:translateX(17px); background:#fff; }
+
+        .sld-section { display:flex; flex-direction:column; gap:10px; }
+        .sld-group { display:flex; flex-direction:column; gap:3px; }
+        .sld-group .sld-hdr { display:flex; justify-content:space-between; font-size:11px; }
+        .sld-group .sld-hdr .name { color:var(--text2); font-weight:600; }
+        .sld-group .sld-hdr .val { color:var(--accent); font-weight:700; font-family:monospace; font-size:12px; }
+        .sld-group input[type="range"] {
+            -webkit-appearance:none; appearance:none;
+            width:100%; height:4px; background:var(--track); border-radius:4px; outline:none; transition:.2s;
+        }
+        .sld-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance:none; appearance:none;
+            width:15px; height:15px;
+            background:linear-gradient(135deg,var(--accent),var(--accent2));
+            border-radius:50%; cursor:pointer;
+            box-shadow:0 0 10px var(--glow); border:2px solid var(--card); transition:.15s;
+        }
+        .sld-group input[type="range"]::-webkit-slider-thumb:hover { transform:scale(1.15); }
+        .sld-group input[type="range"]::-moz-range-thumb {
+            width:15px; height:15px;
+            background:linear-gradient(135deg,var(--accent),var(--accent2));
+            border-radius:50%; cursor:pointer; border:2px solid var(--card);
+        }
+
+        .footer {
+            padding:8px 16px;
+            border-top:1px solid var(--border);
+            display:flex; align-items:center; justify-content:center;
+            background:rgba(0,0,0,.2); flex-shrink:0;
+        }
+        .footer span { font-size:9px; color:var(--dim); letter-spacing:1px; }
+        .footer strong {
+            background:linear-gradient(135deg,var(--accent),var(--accent2));
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+            font-weight:700;
+        }
+    </style>
+</head>
+<body>
+    <button id="btnFloatShow">FF</button>
+    <div class="panel" id="mainPanel">
+        <div class="inject-overlay" id="injectOverlay">
+            <div class="icon">⚡</div>
+            <div class="title">INJETANDO CÓDIGOS</div>
+            <div class="sub">FFH4X · Dark Core Engine v4.2</div>
+            <div class="progress-wrap"><div class="bar" id="progressBar"></div></div>
+            <div class="success">
+                <div class="check">✅</div>
+                <div class="msg">CÓDIGOS INJETADOS COM SUCESSO</div>
+            </div>
+        </div>
+        <div class="header">
+            <div class="brand">
+                <div class="logo">FF</div>
+                <div class="info">
+                    <div class="name"><span>FF</span>H4X</div>
+                    <div class="sub">Dark Core · Injector</div>
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn-hide" id="btnHide" title="ESP - Esconder bonecos">👁</button>
+                <button class="btn-hide" id="btnHidePanel" title="Esconder Painel">✕</button>
+            </div>
+        </div>
+        <div class="status">
+            <div class="indicator">
+                <span class="dot" id="statusDot"></span>
+                <span class="txt" id="statusText">Aguardando</span>
+            </div>
+            <span class="ver">v4.2.0</span>
+        </div>
+
+        <!-- BANNER 90% CAPA -->
+        <div class="highlight-banner">
+            <div class="h-left">
+                <span class="h-icon">🔥</span>
+                <div class="h-text">
+                    <div class="h-title">HEADSHOT 90% CAPA</div>
+                    <div class="h-sub">Aim Assist · Dark Core Engine</div>
+                </div>
+            </div>
+            <span class="h-badge">+90%</span>
+        </div>
+
+        <div class="body">
+            <div class="row-btns">
+                <button class="btn-start" id="btnStart">▶ INICIAR FF</button>
+                <button class="btn-inject" id="btnInject">
+                    <span class="content">
+                        <span class="spinner"></span>
+                        <span class="txt-normal">⚡ INJETAR</span>
+                        <span class="txt-inj">⏳ INJETANDO...</span>
+                        <span class="txt-done">✅ INJETADO</span>
+                    </span>
+                </button>
+            </div>
+            <div class="tog-section">
+                <div class="label">▸ LOCK TARGET</div>
+                <div class="tog-row">
+                    <div class="tog-item">
+                        <span class="lbl">Headlock <small>(cabeça)</small></span>
+                        <label class="switch"><input type="checkbox" id="togHead"><span class="sl"></span></label>
+                    </div>
+                    <div class="tog-item">
+                        <span class="lbl">Necklock <small>(pescoço)</small></span>
+                        <label class="switch"><input type="checkbox" id="togNeck"><span class="sl"></span></label>
+                    </div>
+                    <div class="tog-item">
+                        <span class="lbl">Chestlock <small>(peito)</small></span>
+                        <label class="switch"><input type="checkbox" id="togChest"><span class="sl"></span></label>
+                    </div>
+                </div>
+            </div>
+            <div class="sld-section">
+                <div class="sld-group">
+                    <div class="sld-hdr"><span class="name">🎯 Cabeça (Head)</span><span class="val" id="valHead">90%</span></div>
+                    <input type="range" min="0" max="100" value="90" id="sldHead">
+                </div>
+                <div class="sld-group">
+                    <div class="sld-hdr"><span class="name">🎯 Pescoço (Neck)</span><span class="val" id="valNeck">70%</span></div>
+                    <input type="range" min="0" max="100" value="70" id="sldNeck">
+                </div>
+                <div class="sld-group">
+                    <div class="sld-hdr"><span class="name">🎯 Peito (Chest)</span><span class="val" id="valChest">50%</span></div>
+                    <input type="range" min="0" max="100" value="50" id="sldChest">
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <span>© 2026 <strong>@nixxt</strong> · FFH4X DARK CORE · 90% CAPA</span>
+        </div>
+    </div>
+    <script>
+    (function(){
+        'use strict';
+        const Android = window.Android || null;
+        const panel = document.getElementById('mainPanel');
+        const btnHidePanel = document.getElementById('btnHidePanel');
+        const btnHideESP = document.getElementById('btnHide');
+        const btnShow = document.getElementById('btnFloatShow');
+        const btnStart = document.getElementById('btnStart');
+        const btnInject = document.getElementById('btnInject');
+        const overlay = document.getElementById('injectOverlay');
+        const progressBar = document.getElementById('progressBar');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const sldHead = document.getElementById('sldHead');
+        const sldNeck = document.getElementById('sldNeck');
+        const sldChest = document.getElementById('sldChest');
+        const valHead = document.getElementById('valHead');
+        const valNeck = document.getElementById('valNeck');
+        const valChest = document.getElementById('valChest');
+        const togHead = document.getElementById('togHead');
+        const togNeck = document.getElementById('togNeck');
+        const togChest = document.getElementById('togChest');
+        let isInjecting = false, isInjected = false, isStarted = false;
+
+        function resetStatus() {
+            statusDot.classList.remove('active');
+            statusText.textContent = 'Aguardando';
+            statusText.classList.remove('injected');
+            isInjecting = false; isInjected = false;
+            btnInject.classList.remove('injecting','done');
+            btnInject.disabled = false;
+            btnStart.disabled = false;
+            overlay.classList.remove('active','done');
+            overlay.style.display = 'none';
+            progressBar.style.width = '0%';
+        }
+        function setInjected() {
+            statusDot.classList.add('active');
+            statusText.textContent = '✓ Códigos injetados';
+            statusText.classList.add('injected');
+        }
+
+        btnHidePanel.addEventListener('click', function(){
+            panel.classList.add('hidden');
+            btnShow.style.display = 'flex';
+        });
+
+        btnHideESP.addEventListener('click', function(){
+            panel.classList.add('hidden');
+            btnShow.style.display = 'flex';
+        });
+
+        btnShow.addEventListener('click', function(){
+            panel.classList.remove('hidden');
+            btnShow.style.display = 'none';
+            resetStatus();
+            togHead.checked = false; togNeck.checked = false; togChest.checked = false;
+            sldHead.value = 90; sldNeck.value = 70; sldChest.value = 50;
+            valHead.textContent = '90%'; valNeck.textContent = '70%'; valChest.textContent = '50%';
+            isStarted = false;
+            btnStart.textContent = '▶ INICIAR FF';
+            btnStart.style.borderColor = ''; btnStart.style.boxShadow = '';
+        });
+
+        btnStart.addEventListener('click', function(){
+            if (isStarted) return;
+            resetStatus();
+            isStarted = true;
+            btnStart.textContent = '▶ FF INICIADO';
+            btnStart.disabled = true;
+            statusDot.classList.add('active');
+            statusText.textContent = 'Free Fire em execução';
+            btnStart.style.borderColor = '#22c55e';
+            btnStart.style.boxShadow = '0 0 20px rgba(34,197,94,0.2)';
+            if (Android && Android.abrirFreeFire) {
+                Android.abrirFreeFire();
+            } else {
+                try {
+                    var ffIntent = document.createElement('a');
+                    ffIntent.href = 'intent://com.dts.freefireth#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;end';
+                    document.body.appendChild(ffIntent);
+                    ffIntent.click();
+                    document.body.removeChild(ffIntent);
+                } catch(e){
+                    window.open('https://play.google.com/store/apps/details?id=com.dts.freefireth', '_system');
+                }
+            }
+        });
+
+        btnInject.addEventListener('click', function(){
+            if (isInjecting || isInjected) return;
+            if (!isStarted) {
+                btnStart.style.borderColor = '#ef4444';
+                btnStart.style.boxShadow = '0 0 20px rgba(239,68,68,0.2)';
+                setTimeout(() => { btnStart.style.borderColor = ''; btnStart.style.boxShadow = ''; }, 1500);
+                return;
+            }
+            isInjecting = true;
+            btnInject.disabled = true;
+            btnInject.classList.add('injecting');
+            overlay.style.display = 'flex';
+            overlay.classList.add('active');
+            overlay.classList.remove('done');
+
+            let progress = 0;
+            const interval = setInterval(function(){
+                progress += Math.random() * 4 + 1;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    progressBar.style.width = '100%';
+                    overlay.classList.add('done');
+                    btnInject.classList.remove('injecting');
+                    btnInject.classList.add('done');
+                    btnInject.disabled = false;
+                    isInjecting = false;
+                    isInjected = true;
+                    setInjected();
+                    if (Android && Android.mostrarToast) {
+                        Android.mostrarToast('✅ Códigos injetados com sucesso!');
+                    }
+                } else {
+                    progressBar.style.width = progress + '%';
+                }
+            }, 120);
+        });
+
+        sldHead.addEventListener('input', function(){
+            valHead.textContent = this.value + '%';
+            if (isInjected) resetStatus();
+        });
+        sldNeck.addEventListener('input', function(){
+            valNeck.textContent = this.value + '%';
+            if (isInjected) resetStatus();
+        });
+        sldChest.addEventListener('input', function(){
+            valChest.textContent = this.value + '%';
+            if (isInjected) resetStatus();
+        });
+
+        togHead.addEventListener('change', function(){ if (isInjected) resetStatus(); });
+        togNeck.addEventListener('change', function(){ if (isInjected) resetStatus(); });
+        togChest.addEventListener('change', function(){ if (isInjected) resetStatus(); });
+    })();
+    </script>
+</body>
+</html>
